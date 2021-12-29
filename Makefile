@@ -1,7 +1,7 @@
 CC = gcc
 CXX = g++
-LDLIBS = -lpng
-CFLAGS = -lm -O0
+LDLIBS = -lpng -fopenmp
+CFLAGS = -lm
 VECOPT = -fopt-info-vec-all -march=native
 main: CFLAGS += -pthread
 CXXFLAGS = $(CFLAGS)
