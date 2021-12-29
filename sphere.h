@@ -15,23 +15,23 @@
 
 #include "hittable.h"
 
-class sphere : public hittable {
+class sphere {
    public:
-    sphere() {}
+    __device__ sphere() {}
 
-    sphere(point3 cen, double r, shared_ptr<material> m)
+    __device__ sphere(point3 cen, double r, material* m)
         : center(cen), radius(r), mat_ptr(m){};
 
-    virtual bool hit(
-        const ray& r, double t_min, double t_max, hit_record& rec) const override;
+    __device__ bool hit(
+        const ray& r, double t_min, double t_max, hit_record& rec) const;
 
    public:
     point3 center;
     double radius;
-    shared_ptr<material> mat_ptr;
+    material* mat_ptr;
 };
 
-bool sphere::hit(const ray& r, double t_min, double t_max, hit_record& rec) const {
+__device__ bool sphere::hit(const ray& r, double t_min, double t_max, hit_record& rec) const {
     vec3 oc = r.origin() - center;
     auto a = r.direction().length_squared();
     auto half_b = dot(oc, r.direction());

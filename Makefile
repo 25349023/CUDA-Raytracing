@@ -1,14 +1,18 @@
 CC = gcc
 CXX = g++
-LDLIBS = -lpng -fopenmp
+LDLIBS = -lpng -lm
 CFLAGS = -lm
+NVFLAGS  := -std=c++11 -O3 -Xptxas="-v" -arch=sm_61
 VECOPT = -fopt-info-vec-all -march=native
-main: CFLAGS += -pthread
-CXXFLAGS = $(CFLAGS)
+# CFLAGS += -pthread
+# CXXFLAGS = $(CFLAGS)
 TARGETS = main
 
-.PHONY: all
 all: $(TARGETS)
+
+.PHONY: main
+main: main.cu
+	nvcc $(NVFLAGS) $(LDLIBS) -o $@ $?
 
 .PHONY: clean
 clean:

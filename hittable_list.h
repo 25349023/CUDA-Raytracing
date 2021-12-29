@@ -12,39 +12,41 @@
 //==============================================================================================
 
 #include "rtweekend.h"
-
+#include "sphere.h"
 #include "hittable.h"
 
 #include <memory>
 #include <vector>
 
-class hittable_list : public hittable {
+class hittable_list {
    public:
-    hittable_list() {}
-    hittable_list(shared_ptr<hittable> object) {
+    __device__ hittable_list() {}
+    __device__ hittable_list(sphere* object) {
         add(object);
     }
 
-    void clear() {
-        objects.clear();
+    __device__ void clear() {
+        tail = 0;
     }
-    void add(shared_ptr<hittable> object) {
-        objects.push_back(object);
+    __device__ void add(sphere* object) {
+        objects[tail++] = object;
     }
 
-    virtual bool hit(
-        const ray& r, double t_min, double t_max, hit_record& rec) const override;
+    __device__ bool hit(
+        const ray& r, double t_min, double t_max, hit_record& rec) const;
 
    public:
-    std::vector<shared_ptr<hittable>> objects;
+    sphere** objects;
+    int tail = 0;
 };
 
-bool hittable_list::hit(const ray& r, double t_min, double t_max, hit_record& rec) const {
+__device__ bool hittable_list::hit(const ray& r, double t_min, double t_max, hit_record& rec) const {
     hit_record temp_rec;
     auto hit_anything = false;
     auto closest_so_far = t_max;
 
-    for (const auto& object : objects) {
+    for (int i = 0; i < tail; i++) {
+        const auto object = objects[i];
         if (object->hit(r, t_min, closest_so_far, temp_rec)) {
             hit_anything = true;
             closest_so_far = temp_rec.t;

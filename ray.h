@@ -15,24 +15,24 @@
 
 class ray {
    public:
-    ray() {}
-    ray(const point3& origin, const vec3& direction)
+    __device__ ray() {}
+    __device__ ray(const point3& origin, const vec3& direction)
         : orig(origin), dir(direction), tm(0) {}
 
-    ray(const point3& origin, const vec3& direction, double time)
+    __device__ ray(const point3& origin, const vec3& direction, double time)
         : orig(origin), dir(direction), tm(time) {}
 
-    point3 origin() const {
+    __device__ point3 origin() const {
         return orig;
     }
-    vec3 direction() const {
+    __device__ vec3 direction() const {
         return dir;
     }
-    double time() const {
+    __device__ double time() const {
         return tm;
     }
 
-    point3 at(double t) const {
+    __device__ point3 at(double t) const {
         return orig + t * dir;
     }
 
