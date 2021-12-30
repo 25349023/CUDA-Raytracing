@@ -2,7 +2,7 @@ CC = gcc
 CXX = g++
 LDLIBS = -lpng -lm
 CFLAGS = -lm
-NVFLAGS  := -std=c++11 -O3 -Xptxas="-v" -arch=sm_61
+NVFLAGS  := -std=c++11 -O3 -Xptxas="-v" -arch=sm_61 -g
 VECOPT = -fopt-info-vec-all -march=native
 # CFLAGS += -pthread
 # CXXFLAGS = $(CFLAGS)

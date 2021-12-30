@@ -27,7 +27,7 @@ class material {
     }
 
     __device__ bool scatter(
-        const ray& r_in, const hit_record& rec, color& attenuation, ray& scattered) const {
+        const ray r_in, const hit_record rec, color* attenuation, ray* scattered) const {
         if (type == 1) {
             return scatter1(r_in, rec, attenuation, scattered);
         } else if (type == 2) {
@@ -51,29 +51,39 @@ class material {
     }
 
     __device__ bool scatter1(
-        const ray& r_in, const hit_record& rec, color& attenuation, ray& scattered) const {
+        const ray r_in, const hit_record rec, color* attenuation, ray* scattered) const {
         auto scatter_direction = rec.normal + random_unit_vector();
 
         // Catch degenerate scatter direction
         if (scatter_direction.near_zero())
             scatter_direction = rec.normal;
 
-        scattered = ray(rec.p, scatter_direction);
-        attenuation = albedo;
+        scattered->orig = rec.p;
+        scattered->dir = scatter_direction;
+        scattered->tm = 0;
+        attenuation->e[0] = albedo.e[0];
+        attenuation->e[1] = albedo.e[1];
+        attenuation->e[2] = albedo.e[2];
         return true;
     }
 
     __device__ bool scatter2(
-        const ray& r_in, const hit_record& rec, color& attenuation, ray& scattered) const {
+        const ray r_in, const hit_record rec, color* attenuation, ray* scattered) const {
         vec3 reflected = reflect(unit_vector(r_in.direction()), rec.normal);
-        scattered = ray(rec.p, reflected + fuzz * random_in_unit_sphere());
-        attenuation = albedo;
-        return (dot(scattered.direction(), rec.normal) > 0);
+        scattered->orig = rec.p;
+        scattered->dir = reflected + fuzz * random_in_unit_sphere();
+        scattered->tm = 0;
+        attenuation->e[0] = albedo.e[0];
+        attenuation->e[1] = albedo.e[1];
+        attenuation->e[2] = albedo.e[2];
+        return (dot(scattered->direction(), rec.normal) > 0);
     }
 
     __device__ bool scatter3(
-        const ray& r_in, const hit_record& rec, color& attenuation, ray& scattered) const {
-        attenuation = color(1.0, 1.0, 1.0);
+        const ray r_in, const hit_record rec, color* attenuation, ray* scattered) const {
+        attenuation->e[0] = 1.0;
+        attenuation->e[1] = 1.0;
+        attenuation->e[2] = 1.0;
         double refraction_ratio = rec.front_face ? (1.0 / ir) : ir;
 
         vec3 unit_direction = unit_vector(r_in.direction());
@@ -88,7 +98,9 @@ class material {
         else
             direction = refract(unit_direction, rec.normal, refraction_ratio);
 
-        scattered = ray(rec.p, direction);
+        scattered->orig = rec.p;
+        scattered->dir = direction;
+        scattered->tm = 0;
         return true;
     }
 

@@ -33,24 +33,29 @@ class hittable_list {
     }
 
     __device__ bool hit(
-        const ray& r, double t_min, double t_max, hit_record& rec) const;
+        const ray& r, double t_min, double t_max, hit_record* rec) const;
 
    public:
     sphere** objects;
     int tail = 0;
 };
 
-__device__ bool hittable_list::hit(const ray& r, double t_min, double t_max, hit_record& rec) const {
+__device__ bool hittable_list::hit(const ray& r, double t_min, double t_max, hit_record* rec) const {
     hit_record temp_rec;
     auto hit_anything = false;
     auto closest_so_far = t_max;
 
     for (int i = 0; i < tail; i++) {
         const auto object = objects[i];
-        if (object->hit(r, t_min, closest_so_far, temp_rec)) {
+        if (object->hit(r, t_min, closest_so_far, &temp_rec)) {
             hit_anything = true;
             closest_so_far = temp_rec.t;
-            rec = temp_rec;
+
+            rec->p = temp_rec.p;
+            rec->normal = temp_rec.normal;
+            rec->mat_ptr = temp_rec.mat_ptr;
+            rec->t = temp_rec.t;
+            rec->front_face = temp_rec.front_face;
         }
     }
 

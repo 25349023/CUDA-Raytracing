@@ -20,18 +20,34 @@
 
 #include <iostream>
 
-__device__ color ray_color(const ray& r, const hittable_list* world, int depth) {
+__device__ int foo(const ray& r, const hittable_list* world, int d) {
+    hit_record* hr = new hit_record;
+    if (d == 0) {
+        return 0;
+    }
+    return foo(r, world, d - 1) + 1;
+}
+
+__device__ color ray_color(const ray r, const hittable_list* world, int depth) {
     hit_record rec;
 
     // If we've exceeded the ray bounce limit, no more light is gathered.
-    if (depth <= 0)
+    if (depth <= 0) {
         return color(0, 0, 0);
-
-    if (world->hit(r, 0.001, infinity, rec)) {
+    }
+    if (world->hit(r, 0.001, infinity, &rec)) {
         ray scattered;
         color attenuation;
-        if (rec.mat_ptr->scatter(r, rec, attenuation, scattered))
+        if (rec.mat_ptr->scatter(r, rec, &attenuation, &scattered)) {
+            // color test = attenuation * ray_color(scattered, world, depth - 1);
+            if (depth == 48) {
+                printf("%f %f %f\n", scattered.dir.e[0], scattered.dir.e[1], scattered.dir.e[2]);
+                printf("%f %f %f\n", scattered.orig.e[0], scattered.orig.e[1], scattered.orig.e[2]);
+                printf("%f\n", scattered.tm);
+                return color(0, 0, 0);
+            }
             return attenuation * ray_color(scattered, world, depth - 1);
+        }
         return color(0, 0, 0);
     }
 
@@ -41,15 +57,15 @@ __device__ color ray_color(const ray& r, const hittable_list* world, int depth) 
 }
 
 __global__ void random_scene(hittable_list* world) {
-    world->objects = new sphere*[500];
+    world->objects = new sphere*[200];
     world->tail = 0;
 
     auto ground_material = new material(1);
     ground_material->setup1(color(0.5, 0.5, 0.5));
     world->add(new sphere(point3(0, -1000, 0), 1000, ground_material));
 
-    for (int a = -11; a < 11; a++) {
-        for (int b = -11; b < 11; b++) {
+    for (int a = -5; a < 5; a++) {
+        for (int b = -5; b < 5; b++) {
             auto choose_mat = random_double();
             point3 center(a + 0.9 * random_double(), 0.2, b + 0.9 * random_double());
 
@@ -96,24 +112,25 @@ __global__ void ray_trace_pixel(
 
     const int image_width = 1024;
     const int image_height = 576;
-    const int samples_per_pixel = 10;
+    const int samples_per_pixel = 1;
     const int max_depth = 50;
 
-    int i = threadIdx.x, j = blockIdx.x;
+    for (int k = 0; k < 4; k++) {
+        int i = threadIdx.x * 4 + k, j = blockIdx.x;
+        color pixel_color(0, 0, 0);
+        for (int s = 0; s < samples_per_pixel; ++s) {
+            auto u = (i + random_double()) / (image_width - 1);
+            auto v = (j + random_double()) / (image_height - 1);
+            ray r = cam.get_ray(u, v);
+            // printf("%d\n", foo(r, world, 50));
+            pixel_color += ray_color(r, world, max_depth);
+        }
 
-    color pixel_color(0, 0, 0);
-    for (int s = 0; s < samples_per_pixel; ++s) {
-        auto u = (i + random_double()) / (image_width - 1);
-        auto v = (j + random_double()) / (image_height - 1);
-        ray r = cam.get_ray(u, v);
-        printf("@@@@@\n");
-        // pixel_color += ray_color(r, world, max_depth);
+        pixel_color.postprocessing(samples_per_pixel);
+        out_image[3 * (image_width * (image_height - 1 - j) + i) + 0] = pixel_color.f[2];
+        out_image[3 * (image_width * (image_height - 1 - j) + i) + 1] = pixel_color.f[1];
+        out_image[3 * (image_width * (image_height - 1 - j) + i) + 2] = pixel_color.f[0];
     }
-    // printf("#####\n");
-    // pixel_color.postprocessing(samples_per_pixel);
-    // out_image[3 * (image_width * (image_height - 1 - j) + i) + 0] = pixel_color.f[2];
-    // out_image[3 * (image_width * (image_height - 1 - j) + i) + 1] = pixel_color.f[1];
-    // out_image[3 * (image_width * (image_height - 1 - j) + i) + 2] = pixel_color.f[0];
 }
 
 int main(int argc, char** argv) {
@@ -148,11 +165,15 @@ int main(int argc, char** argv) {
     // std::chrono::duration<double> t;
     // auto startTime = std::chrono::steady_clock::now(), endTime = startTime;
 
-    ray_trace_pixel<<<image_height, image_width>>>(cam, world, dev_out_image);
+    ray_trace_pixel<<<image_height, 256>>>(cam, world, dev_out_image);
     cudaDeviceSynchronize();
+
     // endTime = std::chrono::steady_clock::now();
     // t = endTime - startTime;
     // std::cout << t.count() << "secs." << std::endl;
+
+    cudaMemcpy(out_image, dev_out_image, image_height * image_width * 3 * sizeof(unsigned char),
+               cudaMemcpyDeviceToHost);
 
     write_png(argv[1], out_image, image_height, image_width, 3);
     std::cerr << "\nDone.\n";

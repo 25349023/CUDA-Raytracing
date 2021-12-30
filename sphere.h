@@ -23,7 +23,7 @@ class sphere {
         : center(cen), radius(r), mat_ptr(m){};
 
     __device__ bool hit(
-        const ray& r, double t_min, double t_max, hit_record& rec) const;
+        const ray& r, double t_min, double t_max, hit_record* rec) const;
 
    public:
     point3 center;
@@ -31,7 +31,7 @@ class sphere {
     material* mat_ptr;
 };
 
-__device__ bool sphere::hit(const ray& r, double t_min, double t_max, hit_record& rec) const {
+__device__ bool sphere::hit(const ray& r, double t_min, double t_max, hit_record* rec) const {
     vec3 oc = r.origin() - center;
     auto a = r.direction().length_squared();
     auto half_b = dot(oc, r.direction());
@@ -49,11 +49,11 @@ __device__ bool sphere::hit(const ray& r, double t_min, double t_max, hit_record
             return false;
     }
 
-    rec.t = root;
-    rec.p = r.at(rec.t);
-    vec3 outward_normal = (rec.p - center) / radius;
-    rec.set_face_normal(r, outward_normal);
-    rec.mat_ptr = mat_ptr;
+    rec->t = root;
+    rec->p = r.at(rec->t);
+    vec3 outward_normal = (rec->p - center) / radius;
+    rec->set_face_normal(r, outward_normal);
+    rec->mat_ptr = mat_ptr;
 
     return true;
 }
