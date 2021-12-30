@@ -30,7 +30,7 @@ __device__ int foo(const ray& r, const hittable_list* world, int d) {
 
 __device__ color ray_color(const ray r, const hittable_list* world, int depth) {
     hit_record rec;
-
+    // printf("%d\n", depth);
     // If we've exceeded the ray bounce limit, no more light is gathered.
     if (depth <= 0) {
         return color(0, 0, 0);
@@ -39,11 +39,7 @@ __device__ color ray_color(const ray r, const hittable_list* world, int depth) {
         ray scattered;
         color attenuation;
         if (rec.mat_ptr->scatter(r, rec, &attenuation, &scattered)) {
-            // color test = attenuation * ray_color(scattered, world, depth - 1);
-            if (depth == 48) {
-                printf("%f %f %f\n", scattered.dir.e[0], scattered.dir.e[1], scattered.dir.e[2]);
-                printf("%f %f %f\n", scattered.orig.e[0], scattered.orig.e[1], scattered.orig.e[2]);
-                printf("%f\n", scattered.tm);
+            if (depth == 47) {
                 return color(0, 0, 0);
             }
             return attenuation * ray_color(scattered, world, depth - 1);
@@ -59,6 +55,8 @@ __device__ color ray_color(const ray r, const hittable_list* world, int depth) {
 __global__ void random_scene(hittable_list* world) {
     world->objects = new sphere*[200];
     world->tail = 0;
+
+    random_init();
 
     auto ground_material = new material(1);
     ground_material->setup1(color(0.5, 0.5, 0.5));
@@ -112,7 +110,7 @@ __global__ void ray_trace_pixel(
 
     const int image_width = 1024;
     const int image_height = 576;
-    const int samples_per_pixel = 1;
+    const int samples_per_pixel = 20;
     const int max_depth = 50;
 
     for (int k = 0; k < 4; k++) {

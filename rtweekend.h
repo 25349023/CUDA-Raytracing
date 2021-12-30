@@ -25,6 +25,8 @@ using std::sqrt;
 const double infinity = std::numeric_limits<double>::infinity();
 const double pi = 3.1415926535897932385;
 
+__device__ curandState_t *state;
+
 // Utility Functions
 
 __host__ __device__ inline double degrees_to_radians(double degrees) {
@@ -37,17 +39,20 @@ __host__ __device__ inline double clamp(double x, double min, double max) {
     return x;
 }
 
+__device__ inline void random_init() {
+    state = new curandState_t;
+    curand_init(1234, 0, 0, state);
+}
+
 __device__ inline double random_double() {
     // Returns a random real in [0,1).
-    return 0.5;
-    // curandState_t *state = NULL;
-    // return curand_uniform(state);
+    double d = curand_uniform(state);
+    return d;
 }
 
 __device__ inline double random_double(double min, double max) {
     // Returns a random real in [min,max).
-    return (min + max) / 2;
-    // return min + (max - min) * random_double();
+    return min + (max - min) * random_double();
 }
 
 __device__ inline int random_int(int min, int max) {

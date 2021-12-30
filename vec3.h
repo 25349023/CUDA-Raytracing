@@ -167,7 +167,16 @@ __device__ inline vec3 random_in_unit_disk() {
 }
 
 __device__ inline vec3 random_in_unit_sphere() {
-    return vec3(0.5, 0.5, 0.5);
+    // return vec3(0.5, 0.5, 0.5);
+
+    double len = random_double(0, 1);
+    double theta = random_double(0, 2);
+    double phi = random_double(0, 1);
+    vec3 p(len * cospi(theta) * sinpi(phi),  // x
+           len * sinpi(theta) * sinpi(phi),  // y
+           len * cospi(phi));                // z
+    return p;
+
     // while (true) {
     //     auto p = vec3::random(-1, 1);
     //     if (p.length_squared() >= 1) continue;
