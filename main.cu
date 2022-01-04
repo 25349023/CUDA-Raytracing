@@ -20,14 +20,6 @@
 
 #include <iostream>
 
-__device__ int foo(const ray& r, const hittable_list* world, int d) {
-    hit_record* hr = new hit_record;
-    if (d == 0) {
-        return 0;
-    }
-    return foo(r, world, d - 1) + 1;
-}
-
 __device__ color ray_color(ray r, const hittable_list* world, int depth) {
     hit_record rec;
     color accu(1, 1, 1);  // accumulation of attenuation
@@ -76,7 +68,7 @@ __global__ void random_scene(hittable_list* world) {
     world->objects = new sphere*[500];
     world->tail = 0;
 
-    random_init();
+    // random_init();
 
     auto ground_material = new material(1);
     ground_material->setup1(color(0.5, 0.5, 0.5));
@@ -140,7 +132,6 @@ __global__ void ray_trace_pixel(
             auto u = (i + random_double()) / (image_width - 1);
             auto v = (j + random_double()) / (image_height - 1);
             ray r = cam.get_ray(u, v);
-            // printf("%d\n", foo(r, world, 50));
             pixel_color += ray_color(r, world, max_depth);
         }
 
@@ -164,6 +155,9 @@ int main(int argc, char** argv) {
     unsigned char* dev_out_image;
     cudaMalloc(&dev_out_image, image_height * image_width * 3 * sizeof(unsigned char));
 
+    srand(time(NULL));
+    random_init<<<1, 1>>>(256, rand() % 1024);
+
     hittable_list* world;
     cudaMalloc(&world, sizeof(hittable_list));
     random_scene<<<1, 1>>>(world);
@@ -180,15 +174,15 @@ int main(int argc, char** argv) {
     camera cam(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus);
 
     // Render
-    // std::chrono::duration<double> t;
-    // auto startTime = std::chrono::steady_clock::now(), endTime = startTime;
+    std::chrono::duration<double> t;
+    auto startTime = std::chrono::steady_clock::now(), endTime = startTime;
 
     ray_trace_pixel<<<image_height, 256>>>(cam, world, dev_out_image);
     cudaDeviceSynchronize();
 
-    // endTime = std::chrono::steady_clock::now();
-    // t = endTime - startTime;
-    // std::cout << t.count() << "secs." << std::endl;
+    endTime = std::chrono::steady_clock::now();
+    t = endTime - startTime;
+    std::cout << t.count() << "secs." << std::endl;
 
     cudaMemcpy(out_image, dev_out_image, image_height * image_width * 3 * sizeof(unsigned char),
                cudaMemcpyDeviceToHost);

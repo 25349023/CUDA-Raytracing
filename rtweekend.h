@@ -39,14 +39,16 @@ __host__ __device__ inline double clamp(double x, double min, double max) {
     return x;
 }
 
-__device__ inline void random_init() {
-    state = new curandState_t;
-    curand_init(2022, 1, 4, state);
+__global__ void random_init(int num, int offset) {
+    state = new curandState_t[num];
+    for (int i = 0; i < num; i++) {
+        curand_init(1, i, offset, &state[i]);
+    }
 }
 
 __device__ inline double random_double() {
     // Returns a random real in [0,1).
-    double d = curand_uniform(state);
+    double d = curand_uniform(&state[threadIdx.x]);
     return d;
 }
 
