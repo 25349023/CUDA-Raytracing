@@ -41,7 +41,7 @@ __host__ __device__ inline double clamp(double x, double min, double max) {
 
 __device__ inline void random_init() {
     state = new curandState_t;
-    curand_init(1234, 0, 0, state);
+    curand_init(2022, 1, 4, state);
 }
 
 __device__ inline double random_double() {

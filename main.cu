@@ -28,32 +28,52 @@ __device__ int foo(const ray& r, const hittable_list* world, int d) {
     return foo(r, world, d - 1) + 1;
 }
 
-__device__ color ray_color(const ray r, const hittable_list* world, int depth) {
+__device__ color ray_color(ray r, const hittable_list* world, int depth) {
     hit_record rec;
-    // printf("%d\n", depth);
-    // If we've exceeded the ray bounce limit, no more light is gathered.
-    if (depth <= 0) {
-        return color(0, 0, 0);
-    }
-    if (world->hit(r, 0.001, infinity, &rec)) {
-        ray scattered;
-        color attenuation;
-        if (rec.mat_ptr->scatter(r, rec, &attenuation, &scattered)) {
-            if (depth == 47) {
-                return color(0, 0, 0);
+    color accu(1, 1, 1);  // accumulation of attenuation
+    for (int i = depth; i > 0; i--) {
+        if (world->hit(r, 0.001, infinity, &rec)) {
+            ray scattered;
+            color attenuation;
+            if (rec.mat_ptr->scatter(r, rec, &attenuation, &scattered)) {
+                accu = accu * attenuation;
+                r = scattered;
+                continue;
             }
-            return attenuation * ray_color(scattered, world, depth - 1);
+            return color(0, 0, 0);
+        } else {
+            vec3 unit_direction = unit_vector(r.direction());
+            auto t = 0.5 * (unit_direction.y() + 1.0);
+            return accu * ((1.0 - t) * color(1.0, 1.0, 1.0) + t * color(0.5, 0.7, 1.0));
         }
-        return color(0, 0, 0);
     }
 
-    vec3 unit_direction = unit_vector(r.direction());
-    auto t = 0.5 * (unit_direction.y() + 1.0);
-    return (1.0 - t) * color(1.0, 1.0, 1.0) + t * color(0.5, 0.7, 1.0);
+    return color(0, 0, 0);
+
+    // hit_record rec;
+    // // If we've exceeded the ray bounce limit, no more light is gathered.
+    // if (depth <= 0) {
+    //     return color(0, 0, 0);
+    // }
+    // if (world->hit(r, 0.001, infinity, &rec)) {
+    //     ray scattered;
+    //     color attenuation;
+    //     if (rec.mat_ptr->scatter(r, rec, &attenuation, &scattered)) {
+    //         if (depth == 47) {
+    //             return color(0, 0, 0);
+    //         }
+    //         return attenuation * ray_color(scattered, world, depth - 1);
+    //     }
+    //     return color(0, 0, 0);
+    // }
+
+    // vec3 unit_direction = unit_vector(r.direction());
+    // auto t = 0.5 * (unit_direction.y() + 1.0);
+    // return (1.0 - t) * color(1.0, 1.0, 1.0) + t * color(0.5, 0.7, 1.0);
 }
 
 __global__ void random_scene(hittable_list* world) {
-    world->objects = new sphere*[200];
+    world->objects = new sphere*[500];
     world->tail = 0;
 
     random_init();
@@ -62,8 +82,8 @@ __global__ void random_scene(hittable_list* world) {
     ground_material->setup1(color(0.5, 0.5, 0.5));
     world->add(new sphere(point3(0, -1000, 0), 1000, ground_material));
 
-    for (int a = -5; a < 5; a++) {
-        for (int b = -5; b < 5; b++) {
+    for (int a = -11; a < 11; a++) {
+        for (int b = -11; b < 11; b++) {
             auto choose_mat = random_double();
             point3 center(a + 0.9 * random_double(), 0.2, b + 0.9 * random_double());
 
@@ -110,7 +130,7 @@ __global__ void ray_trace_pixel(
 
     const int image_width = 1024;
     const int image_height = 576;
-    const int samples_per_pixel = 20;
+    const int samples_per_pixel = 10;
     const int max_depth = 50;
 
     for (int k = 0; k < 4; k++) {
