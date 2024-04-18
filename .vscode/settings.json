@@ -1,9 +1,0 @@
-{
-    "files.associations": {
-        "chrono": "cpp",
-        "*.tcc": "cpp",
-        "random": "cpp",
-        "limits": "cpp",
-        "algorithm": "cpp"
-    }
-}

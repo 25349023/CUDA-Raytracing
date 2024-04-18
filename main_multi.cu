@@ -19,6 +19,7 @@
 #include "material.h"
 #include "sphere.h"
 #include <chrono>
+#include <omp.h>
 
 #include <iostream>
 
@@ -96,16 +97,16 @@ __global__ void random_scene(hittable_list* world) {
     world->add(new sphere(point3(4, 1, 0), 1.0, material3));
 }
 
-__global__ void ray_trace_pixel(camera cam, hittable_list* world, unsigned char* out_image) {
+__global__ void ray_trace_pixel(camera cam, hittable_list* world, unsigned char* out_image, int tid) {
 
     const int image_width = 1024;
     const int image_height = 576;
-    const int samples_per_pixel = 10;
+    const int samples_per_pixel = 50;
     const int max_depth = 50;
 
 #pragma unroll
     for (int k = 0; k < 4; k++) {
-        int i = threadIdx.x * 4 + k, j = blockIdx.x;
+        int i = threadIdx.x * 4 + k, j = blockIdx.x + 288 * tid;
         color pixel_color(0, 0, 0);
         for (int s = 0; s < samples_per_pixel; ++s) {
             auto u = (i + random_double()) / (image_width - 1);
@@ -129,39 +130,59 @@ int main(int argc, char** argv) {
     const int image_height = 576;
 
     unsigned char* out_image = (unsigned char*)malloc(image_height * image_width * 3 * sizeof(unsigned char));
-    unsigned char* dev_out_image;
-    cudaMalloc(&dev_out_image, image_height * image_width * 3 * sizeof(unsigned char));
 
     srand(time(NULL));
-    random_init<<<1, 1>>>(256, rand() % 1024);
+    int seed = rand() % 1024;
 
-    hittable_list* world;
-    cudaMalloc(&world, sizeof(hittable_list));
-    random_scene<<<1, 1>>>(world);
-    cudaDeviceSynchronize();
+#pragma omp parallel num_threads(2)
+    {
+        unsigned char* dev_out_image;
+        int tid = omp_get_thread_num();
+        cudaSetDevice(tid);
 
-    // Camera
+        cudaMalloc(&dev_out_image, image_height * image_width * 3 * sizeof(unsigned char));
 
-    point3 lookfrom(13, 2, 3);
-    point3 lookat(0, 0, 0);
-    vec3 vup(0, 1, 0);
-    auto dist_to_focus = 10.0;
-    auto aperture = 0.1;
+        random_init<<<1, 1>>>(256, seed);
 
-    camera cam(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus);
+        hittable_list* world;
+        cudaMalloc(&world, sizeof(hittable_list));
+        random_scene<<<1, 1>>>(world);
 
-    // Render
-    std::chrono::duration<double> t;
-    auto startTime = std::chrono::steady_clock::now(), endTime = startTime;
+        // Camera
 
-    ray_trace_pixel<<<image_height, 256>>>(cam, world, dev_out_image);
-    cudaDeviceSynchronize();
+        point3 lookfrom(13, 2, 3);
+        point3 lookat(0, 0, 0);
+        vec3 vup(0, 1, 0);
+        auto dist_to_focus = 10.0;
+        auto aperture = 0.1;
 
-    endTime = std::chrono::steady_clock::now();
-    t = endTime - startTime;
-    std::cout << t.count() << "secs." << std::endl;
+        camera cam(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus);
 
-    cudaMemcpy(out_image, dev_out_image, image_height * image_width * 3 * sizeof(unsigned char), cudaMemcpyDeviceToHost);
+        // Render
+        // std::chrono::duration<double> t;
+        // auto startTime = std::chrono::steady_clock::now(), endTime = startTime;
+        double start;
+        double end;
+        start = omp_get_wtime();
+
+        ray_trace_pixel<<<image_height / 2, 256>>>(cam, world, dev_out_image, tid);
+        cudaDeviceSynchronize();
+
+        end = omp_get_wtime();
+        printf("Card: %d, Work took %f seconds\n", tid, end - start);
+
+        // endTime = std::chrono::steady_clock::now();
+        // t = endTime - startTime;
+        // std::cout << t.count() << "secs." << std::endl;
+
+        if (tid == 0) {
+            cudaMemcpy(out_image + (image_height / 2) * image_width * 3, dev_out_image + (image_height / 2) * image_width * 3,
+                       (image_height / 2) * image_width * 3 * sizeof(unsigned char), cudaMemcpyDeviceToHost);
+        } else {
+            cudaMemcpy(out_image, dev_out_image, (image_height / 2) * image_width * 3 * sizeof(unsigned char),
+                       cudaMemcpyDeviceToHost);
+        }
+    }
 
     write_png(argv[1], out_image, image_height, image_width, 3);
     std::cerr << "\nDone.\n";
