@@ -100,7 +100,7 @@ __global__ void ray_trace_pixel(camera cam, hittable_list* world, unsigned char*
 
     const int image_width = 1024;
     const int image_height = 576;
-    const int samples_per_pixel = 10;
+    const int samples_per_pixel = 20;
     const int max_depth = 50;
 
 #pragma unroll
