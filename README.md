@@ -1,7 +1,7 @@
 Parallel Ray Tracing with CUDA
 ===
 
-Implement the parallel version of ray tracing with CUDA.
+Implement the parallel ray tracing algorithm with CUDA.
 
 Build
 ---
@@ -28,3 +28,10 @@ Demonstration
 
 ### samples per pixel = 20
 ![low quality](demo.png)
+
+
+Acknowledgement
+---
+The source code of sequential raytracing algorithm is based on ![raytracing.github.io](https://github.com/RayTracing/raytracing.github.io/).
+
+Many thanks to my teammate ![Matt Yao](https://github.com/JNNNNYao).
